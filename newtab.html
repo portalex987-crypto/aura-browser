@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>New Tab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0e0e14;
+  --surface: #16161f;
+  --surface2:#1e1e2a;
+  --border:  rgba(255,255,255,0.08);
+  --accent:  #7c6aff;
+  --glow:    rgba(124,106,255,0.35);
+  --text:    #e8e8f0;
+  --text2:   #7a7a90;
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 24px 40px;
+  gap: 36px;
+}
+
+/* Animated background blobs */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  width: 500px; height: 500px;
+  background: var(--accent);
+  top: -100px; left: -100px;
+  animation: drift 12s ease-in-out infinite alternate;
+}
+body::after {
+  width: 400px; height: 400px;
+  background: #ff6aad;
+  bottom: -80px; right: -80px;
+  animation: drift 16s ease-in-out infinite alternate-reverse;
+}
+@keyframes drift { from { transform: translate(0,0); } to { transform: translate(40px, 30px); } }
+
+* { position: relative; z-index: 1; }
+
+h1#greeting {
+  font-size: 30px;
+  font-weight: 600;
+  text-align: center;
+}
+h1#greeting span { color: var(--accent); }
+
+/* Search */
+.search-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 0 18px;
+  width: min(560px, 90vw);
+  height: 52px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+#q {
+  flex: 1; border: none; outline: none; background: transparent;
+  color: var(--text); font-family: inherit; font-size: 15px;
+}
+#q::placeholder { color: var(--text2); }
+#search-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  color: #fff; flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+#search-btn:hover { opacity: 0.85; }
+#search-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+/* Speed dials */
+.dial-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: min(560px, 90vw);
+}
+.dial {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.dial:hover {
+  background: var(--surface2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.dial .di { font-size: 26px; }
+.dial .dn { font-size: 11px; color: var(--text2); text-align: center; }
+</style>
+</head>
+<body>
+<h1 id="greeting">Good <span id="tod">morning</span> 👋</h1>
+
+<div class="search-row">
+  <input id="q" placeholder="Search or enter address…" autocomplete="off"
+    onkeydown="if(event.key==='Enter') go(this.value)" />
+  <div id="search-btn" onclick="go(document.getElementById('q').value)">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </div>
+</div>
+
+<div class="dial-grid" id="dials"></div>
+
+<script>
+const DIALS = [
+  { name: 'YouTube',    url: 'https://youtube.com',               icon: '▶️' },
+  { name: 'GitHub',     url: 'https://github.com',                icon: '🐙' },
+  { name: 'Google',     url: 'https://google.com',                icon: '🔍' },
+  { name: 'Wikipedia',  url: 'https://wikipedia.org',             icon: '📖' },
+  { name: 'Reddit',     url: 'https://reddit.com',                icon: '🤖' },
+  { name: 'X',          url: 'https://x.com',                     icon: '🐦' },
+  { name: 'MDN',        url: 'https://developer.mozilla.org',     icon: '📚' },
+  { name: 'HN',         url: 'https://news.ycombinator.com',      icon: '🔶' },
+];
+
+function go(raw) {
+  if (!raw.trim()) return;
+  const url = /^https?:\/\//.test(raw) || /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw.trim())
+    ? (/^https?:\/\//.test(raw) ? raw : 'https://' + raw.trim())
+    : 'https://duckduckgo.com/?q=' + encodeURIComponent(raw.trim());
+  window.location.href = url;
+}
+
+const h = new Date().getHours();
+document.getElementById('tod').textContent = h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+
+document.getElementById('dials').innerHTML = DIALS.map(d =>
+  `<a class="dial" href="${d.url}"><div class="di">${d.icon}</div><div class="dn">${d.name}</div></a>`
+).join('');
+</script>
+</body>
+</html>

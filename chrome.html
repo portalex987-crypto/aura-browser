@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Aura Browser</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0e0e14;
+  --surface:   #16161f;
+  --surface2:  #1e1e2a;
+  --border:    rgba(255,255,255,0.08);
+  --accent:    #7c6aff;
+  --glow:      rgba(124,106,255,0.4);
+  --text:      #e8e8f0;
+  --text2:     #7a7a90;
+  --tab-h:     36px;
+  --nav-h:     48px;
+  --r:         7px;
+}
+
+html, body {
+  height: 84px; /* only the chrome — content view fills the rest */
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+}
+
+/* ── TAB BAR ────────────────────────────────────────────── */
+#tab-bar {
+  display: flex;
+  align-items: center;
+  height: var(--tab-h);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 4px;
+  gap: 2px;
+  -webkit-app-region: drag;
+}
+
+#tab-list {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+#tab-list::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  height: 28px;
+  border-radius: 6px 6px 0 0;
+  max-width: 200px;
+  min-width: 80px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1px solid transparent;
+  position: relative;
+  transition: background 0.15s;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+.tab:hover { background: var(--surface2); }
+.tab.active {
+  background: var(--surface2);
+  border-color: var(--border);
+  border-bottom-color: var(--surface2);
+}
+.tab .fav {
+  width: 14px; height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 14px;
+}
+.tab .tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text2);
+}
+.tab.active .tab-title { color: var(--text); }
+.tab .tab-x {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--text2);
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.tab:hover .tab-x, .tab.active .tab-x { display: flex; }
+.tab .tab-x:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+
+/* Loading shimmer on tab bottom */
+.tab.loading::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: -60%; width: 60%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: tabload 1.2s ease-in-out infinite;
+}
+@keyframes tabload {
+  from { left: -60%; }
+  to   { left: 110%; }
+}
+
+#new-tab-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  cursor: pointer; font-size: 18px; color: var(--text2);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+#new-tab-btn:hover { background: var(--surface2); color: var(--text); }
+
+/* Window controls */
+#win-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  -webkit-app-region: no-drag;
+}
+.wc-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 46px; height: 36px;
+  border: none; outline: none; background: transparent;
+  color: var(--text2); font-size: 13px; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.wc-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+#wc-close:hover { background: #e81123; color: #fff; }
+
+/* ── NAV BAR ────────────────────────────────────────────── */
+#nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--nav-h);
+  padding: 0 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--r);
+  border: none; outline: none; background: transparent;
+  color: var(--text2); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.nav-btn:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+.nav-btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+.nav-btn svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Omnibox */
+#omnibox-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0 12px;
+  height: 34px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#omnibox-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+#lock { font-size: 11px; flex-shrink: 0; color: var(--text2); }
+#lock.secure   { color: #4caf82; }
+#lock.insecure { color: #f0a500; }
+#omnibox {
+  flex: 1;
+  border: none; outline: none; background: transparent;
+  color: var(--text); font-family: inherit; font-size: 13px;
+}
+#omnibox::placeholder { color: var(--text2); }
+
+/* Suggestions dropdown */
+#suggestions {
+  position: absolute;
+  top: calc(100% + 6px); left: -1px; right: -1px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  z-index: 9999;
+  display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+#suggestions.open { display: block; }
+.sug {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sug:hover, .sug.sel { background: var(--surface2); }
+.sug .si { color: var(--text2); font-size: 12px; flex-shrink: 0; }
+.sug .st { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.sug .ss { color: var(--text2); font-size: 11px; flex-shrink: 0; }
+
+/* Bookmark star */
+#btn-bm svg { transition: fill 0.2s; }
+#btn-bm.saved svg { fill: #f5c518; stroke: #f5c518; }
+</style>
+</head>
+<body>
+
+<!-- Tab bar -->
+<div id="tab-bar">
+  <div id="tab-list"></div>
+  <div id="new-tab-btn" title="New Tab" onclick="onNewTab()">+</div>
+  <div id="win-controls">
+    <button class="wc-btn" title="Minimize" onclick="api.minimize()">─</button>
+    <button class="wc-btn" id="wc-max" title="Maximize" onclick="api.maximize()">□</button>
+    <button class="wc-btn" id="wc-close" title="Close" onclick="api.close()">✕</button>
+  </div>
+</div>
+
+<!-- Nav bar -->
+<div id="nav-bar">
+  <button class="nav-btn" id="btn-back" title="Back" onclick="api.back()" disabled>
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <button class="nav-btn" id="btn-fwd" title="Forward" onclick="api.forward()" disabled>
+    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <button class="nav-btn" id="btn-reload" title="Reload" onclick="onReload()">
+    <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+  </button>
+  <button class="nav-btn" title="Home" onclick="onNewTab()">
+    <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  </button>
+
+  <div id="omnibox-wrap">
+    <span id="lock">🌐</span>
+    <input id="omnibox" type="text" placeholder="Search or enter address…" autocomplete="off"
+      onfocus="onOmniboxFocus()"
+      onblur="onOmniboxBlur()"
+      oninput="buildSuggestions(this.value)"
+      onkeydown="onOmniboxKey(event)" />
+    <div id="suggestions"></div>
+  </div>
+
+  <button class="nav-btn" id="btn-bm" title="Bookmark" onclick="toggleBookmark()">
+    <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+  </button>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const tabs = {};      // id -> { title, url, favicon, loading, canBack, canFwd }
+let activeId = null;
+let isLoading = false;
+let sugIdx = -1;
+let bookmarks = JSON.parse(localStorage.getItem('aura-bm') || '[]');
+
+// ── Tab UI ─────────────────────────────────────────────────────────────────
+function addTab(id, url) {
+  tabs[id] = { id, title: 'New Tab', url: url || '', favicon: null, loading: true, canBack: false, canFwd: false };
+  setActive(id);
+  renderTabs();
+}
+
+function setActive(id) {
+  activeId = id;
+  renderTabs();
+  updateNav();
+}
+
+function removeTab(id) {
+  delete tabs[id];
+  const ids = Object.keys(tabs);
+  if (ids.length === 0) { onNewTab(); return; }
+  if (activeId === id) { const nid = ids[ids.length - 1]; api.switchTab(nid); setActive(nid); }
+  else renderTabs();
+}
+
+function renderTabs() {
+  const list = document.getElementById('tab-list');
+  list.innerHTML = '';
+  Object.values(tabs).forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (t.id === activeId ? ' active' : '') + (t.loading ? ' loading' : '');
+    el.onclick = () => { api.switchTab(t.id); setActive(t.id); };
+    const fav = t.favicon
+      ? `<img class="fav" src="${esc(t.favicon)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',textContent:'🌐'}))">`
+      : `<span class="fav">🌐</span>`;
+    el.innerHTML = `${fav}
+      <span class="tab-title">${esc(t.title)}</span>
+      <span class="tab-x" onclick="event.stopPropagation();onCloseTab('${t.id}')">✕</span>`;
+    list.appendChild(el);
+  });
+  updateBookmarkStar();
+}
+
+function updateNav() {
+  const t = tabs[activeId];
+  document.getElementById('btn-back').disabled  = !t?.canBack;
+  document.getElementById('btn-fwd').disabled   = !t?.canFwd;
+  const url = t?.url || '';
+  const omni = document.getElementById('omnibox');
+  if (document.activeElement !== omni) omni.value = isNewtab(url) ? '' : url;
+  updateLock(url);
+}
+
+function updateLock(url) {
+  const el = document.getElementById('lock');
+  if (url.startsWith('https://'))     { el.textContent = '🔒'; el.className = 'secure'; }
+  else if (url.startsWith('http://')) { el.textContent = '⚠️'; el.className = 'insecure'; }
+  else                                { el.textContent = '🌐'; el.className = ''; }
+}
+
+function updateBookmarkStar() {
+  const t = tabs[activeId];
+  const saved = t && bookmarks.some(b => b.url === t.url) && !isNewtab(t.url);
+  document.getElementById('btn-bm').classList.toggle('saved', saved);
+}
+
+function isNewtab(url) { return !url || url.startsWith('file://'); }
+
+// ── Actions ────────────────────────────────────────────────────────────────
+async function onNewTab() {
+  const id = await api.newTab();
+  addTab(id);
+}
+
+function onCloseTab(id) {
+  api.closeTab(id);
+  removeTab(id);
+}
+
+function onReload() {
+  if (isLoading) api.stop(); else api.reload();
+}
+
+function toggleBookmark() {
+  const t = tabs[activeId];
+  if (!t || isNewtab(t.url)) return;
+  const idx = bookmarks.findIndex(b => b.url === t.url);
+  if (idx >= 0) bookmarks.splice(idx, 1);
+  else bookmarks.push({ title: t.title, url: t.url, favicon: t.favicon });
+  localStorage.setItem('aura-bm', JSON.stringify(bookmarks));
+  updateBookmarkStar();
+}
+
+// ── Omnibox ────────────────────────────────────────────────────────────────
+function isUrl(s) {
+  return /^https?:\/\//.test(s) || /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\/|$)/.test(s.trim());
+}
+function normalize(url) {
+  url = url.trim();
+  return /^https?:\/\//.test(url) ? url : 'https://' + url;
+}
+function searchUrl(q) { return 'https://duckduckgo.com/?q=' + encodeURIComponent(q); }
+
+function navigate(raw) {
+  if (!raw.trim()) return;
+  const url = isUrl(raw) ? normalize(raw) : searchUrl(raw);
+  api.navigate(url);
+  document.getElementById('omnibox').blur();
+  hideSug();
+}
+
+function onOmniboxFocus() {
+  const omni = document.getElementById('omnibox');
+  omni.select();
+  buildSuggestions(omni.value);
+}
+function onOmniboxBlur() {
+  setTimeout(hideSug, 150);
+  updateNav();
+}
+
+function onOmniboxKey(e) {
+  const sug = document.getElementById('suggestions');
+  const items = [...sug.querySelectorAll('.sug')];
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    sugIdx = Math.min(sugIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('sel', i === sugIdx));
+    if (items[sugIdx]) document.getElementById('omnibox').value = items[sugIdx].dataset.url;
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    sugIdx = Math.max(sugIdx - 1, -1);
+    items.forEach((el, i) => el.classList.toggle('sel', i === sugIdx));
+    if (sugIdx >= 0 && items[sugIdx]) document.getElementById('omnibox').value = items[sugIdx].dataset.url;
+  } else if (e.key === 'Enter') {
+    if (sugIdx >= 0 && items[sugIdx]) navigate(items[sugIdx].dataset.url);
+    else navigate(document.getElementById('omnibox').value);
+  } else if (e.key === 'Escape') {
+    document.getElementById('omnibox').blur();
+  }
+}
+
+const SITES = [
+  'google.com','youtube.com','github.com','reddit.com','wikipedia.org',
+  'stackoverflow.com','developer.mozilla.org','x.com','npmjs.com',
+  'news.ycombinator.com','twitch.tv','linkedin.com'
+];
+
+function buildSuggestions(val) {
+  val = val.trim(); sugIdx = -1;
+  const box = document.getElementById('suggestions');
+  if (!val) { hideSug(); return; }
+
+  const results = [];
+  if (isUrl(val)) results.push({ icon: '↗', text: normalize(val), sub: 'Navigate', url: normalize(val) });
+  SITES.filter(s => s.includes(val.toLowerCase())).slice(0, 4)
+    .forEach(s => results.push({ icon: '🌐', text: s, sub: 'https://' + s, url: 'https://' + s }));
+  results.push({ icon: '🔍', text: `Search "${val}"`, sub: 'DuckDuckGo', url: searchUrl(val) });
+
+  box.innerHTML = results.slice(0, 7).map(r =>
+    `<div class="sug" data-url="${esc(r.url)}" onclick="navigate('${esc(r.url)}')">
+       <span class="si">${r.icon}</span>
+       <span class="st">${esc(r.text)}</span>
+       <span class="ss">${esc(r.sub)}</span>
+     </div>`
+  ).join('');
+  box.classList.add('open');
+}
+function hideSug() { document.getElementById('suggestions').classList.remove('open'); sugIdx = -1; }
+
+// ── IPC listeners ──────────────────────────────────────────────────────────
+api.onTabTitle((id, title) => {
+  if (tabs[id]) { tabs[id].title = title || 'New Tab'; renderTabs(); }
+});
+api.onTabFavicon((id, fav) => {
+  if (tabs[id]) { tabs[id].favicon = fav; renderTabs(); }
+});
+api.onTabLoading((id, loading) => {
+  if (tabs[id]) {
+    tabs[id].loading = loading;
+    if (id === activeId) {
+      isLoading = loading;
+      const btn = document.getElementById('btn-reload');
+      btn.title = loading ? 'Stop' : 'Reload';
+      btn.querySelector('svg').innerHTML = loading
+        ? '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
+        : '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>';
+    }
+    renderTabs();
+  }
+});
+api.onTabUrl((id, url) => {
+  if (!tabs[id]) return;
+  tabs[id].url = url;
+  if (id === activeId) {
+    const omni = document.getElementById('omnibox');
+    if (document.activeElement !== omni) omni.value = isNewtab(url) ? '' : url;
+    updateLock(url);
+    updateBookmarkStar();
+  }
+});
+api.onTabCanNav((id, canBack, canFwd) => {
+  if (!tabs[id]) return;
+  tabs[id].canBack = canBack; tabs[id].canFwd = canFwd;
+  if (id === activeId) {
+    document.getElementById('btn-back').disabled = !canBack;
+    document.getElementById('btn-fwd').disabled  = !canFwd;
+  }
+});
+api.onTabOpened((id, url) => { addTab(id, url); });
+api.onWinState(state => {
+  document.getElementById('wc-max').textContent = state === 'maximized' ? '❐' : '□';
+});
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+api.newTab().then(id => addTab(id));
+</script>
+</body>
+</html>

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aura Browser</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e14;
+    --surface: #16161f;
+    --surface2: #1e1e2a;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7c6aff;
+    --accent-glow: rgba(124,106,255,0.35);
+    --text: #e8e8f0;
+    --text2: #888899;
+    --tab-active: #1e1e2a;
+    --tab-h: 36px;
+    --nav-h: 48px;
+    --status-h: 24px;
+    --radius: 8px;
+  }
+
+  html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); font-size: 13px; }
+
+  /* ── CHROME LAYOUT ───────────────────────────── */
+  #chrome { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── TAB BAR ─────────────────────────────────── */
+  #tab-bar {
+    display: flex; align-items: center;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    height: var(--tab-h);
+    padding: 0 4px;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  #tab-bar::-webkit-scrollbar { display: none; }
+
+  .tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 10px 0 8px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 200px;
+    min-width: 80px;
+    transition: background 0.15s;
+    -webkit-app-region: no-drag;
+    position: relative;
+  }
+  .tab:hover { background: var(--surface2); }
+  .tab.active {
+    background: var(--surface2);
+    border-color: var(--border);
+    border-bottom-color: var(--surface2);
+  }
+  .tab .favicon { width: 14px; height: 14px; flex-shrink: 0; border-radius: 2px; }
+  .tab .tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: var(--text2); }
+  .tab.active .tab-title { color: var(--text); }
+  .tab .tab-close {
+    display: flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    font-size: 11px; color: var(--text2); flex-shrink: 0;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+  }
+  .tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
+  .tab .tab-close:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+
+  .loading-bar {
+    position: absolute; bottom: 0; left: 0; height: 2px;
+    background: var(--accent);
+    animation: loading 1.5s ease-in-out infinite;
+    display: none;
+  }
+  .tab.loading .loading-bar { display: block; }
+  @keyframes loading {
+    0%   { width: 0;    opacity: 1; }
+    70%  { width: 80%;  opacity: 1; }
+    100% { width: 100%; opacity: 0; }
+  }
+
+  #new-tab-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+    cursor: pointer; color: var(--text2); font-size: 16px;
+    transition: background 0.15s, color 0.15s;
+    -webkit-app-region: no-drag;
+    margin-left: 2px;
+  }
+  #new-tab-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── NAV BAR ─────────────────────────────────── */
+  #nav-bar {
+    display: flex; align-items: center; gap: 6px;
+    height: var(--nav-h);
+    padding: 0 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: var(--radius);
+    cursor: pointer; color: var(--text2); transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .nav-btn:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+  .nav-btn svg { width: 16px; height: 16px; }
+
+  /* Omnibox */
+  #omnibox-wrap {
+    flex: 1; position: relative;
+    display: flex; align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0 12px;
+    height: 34px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #omnibox-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  #lock-icon { color: var(--text2); margin-right: 6px; flex-shrink: 0; font-size: 11px; }
+  #lock-icon.secure { color: #4caf82; }
+  #lock-icon.insecure { color: #f0a500; }
+  #omnibox {
+    flex: 1; border: none; outline: none; background: transparent;
+    color: var(--text); font-family: inherit; font-size: 13px;
+  }
+  #omnibox::placeholder { color: var(--text2); }
+
+  /* Suggestions */
+  #suggestions {
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  #suggestions.visible { display: block; }
+  .suggestion {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .suggestion:hover, .suggestion.selected { background: var(--surface2); }
+  .suggestion .sug-icon { color: var(--text2); font-size: 12px; flex-shrink: 0; }
+  .suggestion .sug-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .suggestion .sug-sub { color: var(--text2); font-size: 11px; }
+
+  /* ── VIEWPORT ────────────────────────────────── */
+  #viewport { flex: 1; position: relative; overflow: hidden; background: #fff; }
+  #main-frame {
+    width: 100%; height: 100%;
+    border: none; display: block;
+    background: #fff;
+  }
+
+  /* ── INTERNAL PAGES ──────────────────────────── */
+  .int-page {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center;
+    overflow-y: auto;
+    display: none;
+  }
+  .int-page.active { display: flex; }
+
+  /* Start page */
+  #page-start { padding: 60px 24px 40px; gap: 40px; }
+  #start-greeting { font-size: 28px; font-weight: 600; color: var(--text); text-align: center; }
+  #start-greeting span { color: var(--accent); }
+  #start-search-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 0 18px;
+    width: min(560px, 90vw);
+    height: 52px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #start-search-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  #start-search { flex: 1; border: none; outline: none; background: transparent; color: var(--text); font-size: 15px; font-family: inherit; }
+  #start-search::placeholder { color: var(--text2); }
+  #start-search-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    color: #fff; transition: opacity 0.15s;
+  }
+  #start-search-btn:hover { opacity: 0.85; }
+
+  .speed-dial-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    width: min(560px, 90vw);
+  }
+  .speed-dial {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer; transition: background 0.15s, transform 0.15s;
+    text-decoration: none; color: var(--text);
+  }
+  .speed-dial:hover { background: var(--surface2); transform: translateY(-2px); }
+  .speed-dial .sd-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; background: var(--surface2);
+  }
+  .speed-dial .sd-name { font-size: 11px; color: var(--text2); text-align: center; }
+
+  /* Blocked page */
+  #page-blocked { justify-content: center; gap: 20px; }
+  .blocked-icon { font-size: 64px; }
+  .blocked-title { font-size: 22px; font-weight: 600; }
+  .blocked-msg { color: var(--text2); text-align: center; max-width: 400px; line-height: 1.6; }
+  .blocked-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 8px 18px; border-radius: 20px; cursor: pointer; font-family: inherit;
+    font-size: 13px; border: 1px solid var(--border); transition: background 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { background: var(--surface2); color: var(--text); }
+  .btn-secondary:hover { background: var(--surface); }
+
+  /* ── STATUS BAR ──────────────────────────────── */
+  #status-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    height: var(--status-h);
+    padding: 0 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text2);
+  }
+  #status-text { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status-right { display: flex; align-items: center; gap: 12px; }
+  .zoom-ctrl { display: flex; align-items: center; gap: 4px; }
+  .zoom-btn {
+    width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s; font-size: 14px; line-height: 1;
+  }
+  .zoom-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* SVG icons */
+  svg { display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div id="chrome">
+
+  <!-- Tab Bar -->
+  <div id="tab-bar">
+    <!-- tabs injected here -->
+    <div id="new-tab-btn" title="New Tab" onclick="openTab()">+</div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <div id="nav-bar">
+    <button class="nav-btn" id="btn-back" title="Back" onclick="goBack()">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="nav-btn" id="btn-fwd" title="Forward" onclick="goForward()">
+      <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <button class="nav-btn" id="btn-reload" title="Reload" onclick="reloadPage()">
+      <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+    <button class="nav-btn" id="btn-home" title="Home" onclick="navigate('browser://start')">
+      <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+
+    <div id="omnibox-wrap">
+      <span id="lock-icon">🌐</span>
+      <input id="omnibox" type="text" placeholder="Search or enter address" autocomplete="off"
+        onfocus="omniboxFocus()" onblur="omniboxBlur()" oninput="omniboxInput()" onkeydown="omniboxKeydown(event)" />
+      <div id="suggestions"></div>
+    </div>
+
+    <button class="nav-btn" id="btn-bookmark" title="Bookmark" onclick="toggleBookmark()">
+      <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    </button>
+  </div>
+
+  <!-- Viewport -->
+  <div id="viewport">
+    <iframe id="main-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+
+    <!-- Start Page -->
+    <div class="int-page" id="page-start">
+      <div id="start-greeting">Good <span id="time-of-day">morning</span> 👋</div>
+      <div id="start-search-wrap">
+        <input id="start-search" placeholder="Search the web or enter URL…"
+          onkeydown="if(event.key==='Enter') navigate(this.value)" />
+        <div id="start-search-btn" onclick="navigate(document.getElementById('start-search').value)">
+          <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+      </div>
+      <div class="speed-dial-grid" id="speed-dials"></div>
+    </div>
+
+    <!-- Blocked Page -->
+    <div class="int-page" id="page-blocked">
+      <div class="blocked-icon">🚫</div>
+      <div class="blocked-title">Can't open this page</div>
+      <div class="blocked-msg" id="blocked-msg">This site blocks being embedded inside other pages. You can open it in your system browser instead.</div>
+      <div class="blocked-actions">
+        <button class="btn btn-primary" id="open-external-btn" onclick="openExternal()">Open in System Browser ↗</button>
+        <button class="btn btn-secondary" onclick="goBack()">Go Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div id="status-bar">
+    <span id="status-text">Ready</span>
+    <div id="status-right">
+      <div class="zoom-ctrl">
+        <div class="zoom-btn" onclick="setZoom(-0.1)">−</div>
+        <span id="zoom-label">100%</span>
+        <div class="zoom-btn" onclick="setZoom(+0.1)">+</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let tabs = [];
+let activeId = null;
+let tabCounter = 0;
+let sugIndex = -1;
+let blockedUrl = '';
+
+const SPEED_DIALS = [
+  { name: 'YouTube',  url: 'https://youtube.com',  icon: '▶️' },
+  { name: 'GitHub',   url: 'https://github.com',   icon: '🐙' },
+  { name: 'Google',   url: 'https://google.com',   icon: '🔍' },
+  { name: 'Wikipedia',url: 'https://wikipedia.org',icon: '📖' },
+  { name: 'Reddit',   url: 'https://reddit.com',   icon: '🤖' },
+  { name: 'X / Twitter', url: 'https://x.com',    icon: '🐦' },
+  { name: 'MDN',      url: 'https://developer.mozilla.org', icon: '📚' },
+  { name: 'Hacker News', url: 'https://news.ycombinator.com', icon: '🔶' },
+];
+
+// ── Storage ────────────────────────────────────────────────────────────────
+function loadBookmarks()  { try { return JSON.parse(localStorage.getItem('aura-bookmarks') || '[]'); } catch { return []; } }
+function saveBookmarks(b) { localStorage.setItem('aura-bookmarks', JSON.stringify(b)); }
+let bookmarks = loadBookmarks();
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function getTab(id) { return tabs.find(t => t.id === id); }
+function activeTab() { return getTab(activeId); }
+
+function isUrl(s) {
+  s = s.trim();
+  if (/^browser:\/\//.test(s)) return true;
+  if (/^https?:\/\//.test(s)) return true;
+  if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(s)) return true;
+  return false;
+}
+function normalize(url) {
+  url = url.trim();
+  if (/^browser:\/\//.test(url)) return url;
+  if (!/^https?:\/\//.test(url)) return 'https://' + url;
+  return url;
+}
+function searchUrl(q) {
+  return 'https://duckduckgo.com/?q=' + encodeURIComponent(q);
+}
+function faviconUrl(url) {
+  try { return 'https://www.google.com/s2/favicons?sz=32&domain=' + new URL(url).hostname; }
+  catch { return null; }
+}
+function greet() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+}
+function isInternal(url) { return url && url.startsWith('browser://'); }
+function isBlocked(url) { return url === '_blocked_'; }
+
+// ── Tab Management ─────────────────────────────────────────────────────────
+function openTab(url = 'browser://start') {
+  const id = 'tab-' + (++tabCounter);
+  tabs.push({ id, url, title: 'New Tab', history: [url], hIdx: 0, loading: false, zoom: 1 });
+  switchTab(id);
+  renderTabs();
+}
+
+function closeTab(id, e) {
+  if (e) e.stopPropagation();
+  const idx = tabs.findIndex(t => t.id === id);
+  tabs.splice(idx, 1);
+  if (tabs.length === 0) { openTab(); return; }
+  if (activeId === id) switchTab(tabs[Math.min(idx, tabs.length - 1)].id);
+  else renderTabs();
+}
+
+function switchTab(id) {
+  activeId = id;
+  const tab = activeTab();
+  loadUrl(tab.url, false);
+  renderTabs();
+  updateNav();
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function navigate(raw) {
+  if (!raw || !raw.trim()) return;
+  const url = isUrl(raw) ? normalize(raw) : searchUrl(raw);
+  const tab = activeTab();
+  // push history
+  tab.history = tab.history.slice(0, tab.hIdx + 1);
+  tab.history.push(url);
+  tab.hIdx = tab.history.length - 1;
+  tab.url = url;
+  loadUrl(url, true);
+  updateNav();
+  hideSuggestions();
+  document.getElementById('omnibox').blur();
+}
+
+function goBack() {
+  const tab = activeTab(); if (!tab || tab.hIdx <= 0) return;
+  tab.hIdx--; tab.url = tab.history[tab.hIdx];
+  loadUrl(tab.url, true); updateNav();
+}
+function goForward() {
+  const tab = activeTab(); if (!tab || tab.hIdx >= tab.history.length - 1) return;
+  tab.hIdx++; tab.url = tab.history[tab.hIdx];
+  loadUrl(tab.url, true); updateNav();
+}
+function reloadPage() {
+  const tab = activeTab(); if (!tab) return;
+  loadUrl(tab.url, true);
+}
+
+function loadUrl(url, showLoad) {
+  const tab = activeTab();
+  hidePage('page-start'); hidePage('page-blocked');
+  const frame = document.getElementById('main-frame');
+
+  if (url === 'browser://start') {
+    frame.style.display = 'none';
+    showPage('page-start');
+    tab.title = 'New Tab'; tab.loading = false;
+    setStatus(''); renderTabs(); updateOmnibox(); updateLock(url);
+    return;
+  }
+
+  if (url === '_blocked_') {
+    frame.style.display = 'none';
+    showPage('page-blocked');
+    tab.title = 'Blocked'; tab.loading = false;
+    setStatus('Page blocked'); renderTabs(); updateOmnibox(); return;
+  }
+
+  // external url — try iframe
+  frame.style.display = 'block';
+  setStatus('Loading…');
+  tab.loading = true; renderTabs();
+
+  frame.onload = () => {
+    tab.loading = false; tab.title = extractTitle(url); renderTabs();
+    setStatus(''); updateOmnibox();
+  };
+  frame.onerror = () => onFrameError(url);
+
+  // set src and detect error via message timeout
+  frame.src = url;
+  updateOmnibox(); updateLock(url);
+
+  // Fallback: many sites block silently — detect via postMessage timeout
+  clearTimeout(tab._errTimer);
+  tab._errTimer = setTimeout(() => {
+    // try to read frame content — throws if blocked
+    try {
+      const t = frame.contentDocument && frame.contentDocument.title;
+      if (t !== undefined) { tab.title = t || extractTitle(url); tab.loading = false; renderTabs(); setStatus(''); }
+      else { onFrameError(url); }
+    } catch(e) {
+      onFrameError(url);
+    }
+  }, 5000);
+}
+
+function onFrameError(url) {
+  const tab = activeTab(); if (!tab) return;
+  clearTimeout(tab._errTimer);
+  blockedUrl = url;
+  document.getElementById('open-external-btn').title = url;
+  document.getElementById('blocked-msg').textContent =
+    `"${extractTitle(url)}" blocks being embedded. This is a browser security restriction, not a bug.`;
+  const frame = document.getElementById('main-frame');
+  frame.style.display = 'none';
+  frame.src = 'about:blank';
+  hidePage('page-start');
+  showPage('page-blocked');
+  tab.title = extractTitle(url); tab.loading = false;
+  renderTabs(); setStatus('Blocked');
+}
+
+function openExternal() { if (blockedUrl) window.open(blockedUrl, '_blank'); }
+
+function extractTitle(url) {
+  try { return new URL(url).hostname.replace('www.', ''); }
+  catch { return url; }
+}
+
+// ── Internal Page Helpers ──────────────────────────────────────────────────
+function showPage(id) { document.getElementById(id).classList.add('active'); }
+function hidePage(id) { document.getElementById(id).classList.remove('active'); }
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  const newBtn = document.getElementById('new-tab-btn');
+  // remove old tab elements
+  bar.querySelectorAll('.tab').forEach(el => el.remove());
+  tabs.forEach(tab => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (tab.id === activeId ? ' active' : '') + (tab.loading ? ' loading' : '');
+    el.title = tab.url;
+    el.onclick = () => switchTab(tab.id);
+    const fav = tab.url.startsWith('http') ? `<img class="favicon" src="${faviconUrl(tab.url)}" onerror="this.style.display='none'" />` : '<span style="font-size:12px">🌐</span>';
+    el.innerHTML = `${fav}<span class="tab-title">${escHtml(tab.title)}</span><span class="tab-close" onclick="closeTab('${tab.id}',event)">✕</span><div class="loading-bar"></div>`;
+    bar.insertBefore(el, newBtn);
+  });
+  // sync bookmark star
+  updateBookmarkStar();
+}
+
+function updateNav() {
+  const tab = activeTab();
+  document.getElementById('btn-back').disabled = !tab || tab.hIdx <= 0;
+  document.getElementById('btn-fwd').disabled = !tab || tab.hIdx >= tab.history.length - 1;
+  updateOmnibox();
+}
+
+function updateOmnibox() {
+  const tab = activeTab(); if (!tab) return;
+  const el = document.getElementById('omnibox');
+  if (document.activeElement !== el) el.value = tab.url === 'browser://start' ? '' : tab.url;
+  updateLock(tab.url);
+}
+
+function updateLock(url) {
+  const el = document.getElementById('lock-icon');
+  if (url.startsWith('https://')) { el.textContent = '🔒'; el.className = 'secure'; }
+  else if (url.startsWith('http://')) { el.textContent = '⚠️'; el.className = 'insecure'; }
+  else { el.textContent = '🌐'; el.className = ''; }
+}
+
+function updateBookmarkStar() {
+  const tab = activeTab(); if (!tab) return;
+  const btn = document.getElementById('btn-bookmark');
+  const isBookmarked = bookmarks.some(b => b.url === tab.url);
+  btn.style.color = isBookmarked ? '#f5c518' : '';
+}
+
+function setStatus(msg) { document.getElementById('status-text').textContent = msg || 'Ready'; }
+
+function setZoom(delta) {
+  const tab = activeTab(); if (!tab) return;
+  tab.zoom = Math.max(0.5, Math.min(3, +(tab.zoom + delta).toFixed(1)));
+  const frame = document.getElementById('main-frame');
+  frame.style.transform = `scale(${tab.zoom})`;
+  frame.style.transformOrigin = 'top left';
+  frame.style.width = `${100 / tab.zoom}%`;
+  frame.style.height = `${100 / tab.zoom}%`;
+  document.getElementById('zoom-label').textContent = Math.round(tab.zoom * 100) + '%';
+}
+
+// ── Omnibox ────────────────────────────────────────────────────────────────
+const SUGGEST_SITES = [
+  'google.com', 'youtube.com', 'github.com', 'reddit.com',
+  'wikipedia.org', 'x.com', 'developer.mozilla.org', 'stackoverflow.com',
+  'news.ycombinator.com', 'npmjs.com'
+];
+
+function omniboxFocus() {
+  const el = document.getElementById('omnibox');
+  el.select();
+  buildSuggestions(el.value);
+}
+function omniboxBlur() {
+  setTimeout(hideSuggestions, 150);
+  updateOmnibox();
+}
+function omniboxInput() { buildSuggestions(document.getElementById('omnibox').value); sugIndex = -1; }
+function omniboxKeydown(e) {
+  const sug = document.getElementById('suggestions');
+  const items = sug.querySelectorAll('.suggestion');
+  if (e.key === 'ArrowDown') { e.preventDefault(); sugIndex = Math.min(sugIndex + 1, items.length - 1); highlightSug(items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); sugIndex = Math.max(sugIndex - 1, -1); highlightSug(items); }
+  else if (e.key === 'Enter') {
+    if (sugIndex >= 0 && items[sugIndex]) { navigate(items[sugIndex].dataset.url); }
+    else { navigate(document.getElementById('omnibox').value); }
+  }
+  else if (e.key === 'Escape') { hideSuggestions(); document.getElementById('omnibox').blur(); }
+}
+function highlightSug(items) {
+  items.forEach((el, i) => el.classList.toggle('selected', i === sugIndex));
+  if (sugIndex >= 0 && items[sugIndex]) document.getElementById('omnibox').value = items[sugIndex].dataset.url;
+}
+
+function buildSuggestions(val) {
+  val = val.trim();
+  const sug = document.getElementById('suggestions');
+  if (!val) { hideSuggestions(); return; }
+  const results = [];
+  // history matches
+  // site completions
+  SUGGEST_SITES.filter(s => s.includes(val.toLowerCase())).slice(0, 3).forEach(s => {
+    results.push({ icon: '🌐', text: s, sub: 'https://' + s, url: 'https://' + s });
+  });
+  // search suggestion
+  results.push({ icon: '🔍', text: `Search for "${val}"`, sub: 'DuckDuckGo', url: searchUrl(val) });
+  if (isUrl(val)) results.unshift({ icon: '↗', text: normalize(val), sub: 'Navigate', url: normalize(val) });
+  sug.innerHTML = results.slice(0, 6).map((r, i) =>
+    `<div class="suggestion" data-url="${escHtml(r.url)}" onclick="navigate('${escHtml(r.url)}')">
+      <span class="sug-icon">${r.icon}</span>
+      <span class="sug-text">${escHtml(r.text)}</span>
+      <span class="sug-sub">${escHtml(r.sub)}</span>
+    </div>`
+  ).join('');
+  sug.classList.add('visible');
+}
+function hideSuggestions() {
+  document.getElementById('suggestions').classList.remove('visible');
+  sugIndex = -1;
+}
+
+// ── Bookmarks ──────────────────────────────────────────────────────────────
+function toggleBookmark() {
+  const tab = activeTab(); if (!tab || isInternal(tab.url)) return;
+  const existing = bookmarks.findIndex(b => b.url === tab.url);
+  if (existing >= 0) bookmarks.splice(existing, 1);
+  else bookmarks.push({ id: Date.now().toString(), title: tab.title, url: tab.url, favicon: faviconUrl(tab.url) });
+  saveBookmarks(bookmarks);
+  updateBookmarkStar();
+}
+
+// ── Start Page ─────────────────────────────────────────────────────────────
+function renderSpeedDials() {
+  const grid = document.getElementById('speed-dials');
+  grid.innerHTML = SPEED_DIALS.map(d =>
+    `<div class="speed-dial" onclick="navigate('${d.url}')">
+      <div class="sd-icon">${d.icon}</div>
+      <div class="sd-name">${d.name}</div>
+    </div>`
+  ).join('');
+  document.getElementById('time-of-day').textContent = greet();
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
+renderSpeedDials();
+openTab('browser://start');
+</script>
+</body>
+</html>
