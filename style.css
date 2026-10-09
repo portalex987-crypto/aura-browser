@@ -271,3 +271,22 @@ iframe.web-frame.forced-dark { filter: invert(1) hue-rotate(180deg); }
 .toggle-switch.active::after { left: 21px; }
 
 @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+/* Open-in-new-tab button styled for the GX toolbar */
+#open-external-btn {
+  flex-shrink: 0;
+  margin: 0 8px 0 4px;
+  padding: 0 12px;
+  min-height: 34px;
+  color: var(--text-color, #fff);
+  background: transparent;
+  border: 1px solid var(--gx-accent, #fa1e4e);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#open-external-btn:hover {
+  background: var(--gx-accent, #fa1e4e);
+  color: #fff;
+}

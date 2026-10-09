@@ -226,22 +226,12 @@
   // Open the current website in the regular browser
   const openExternalBtn = document.createElement("button");
   openExternalBtn.id = "open-external-btn";
-  openExternalBtn.textContent = "↗ Open in New Tab";
-  openExternalBtn.title = "Open this website in a regular browser tab";
-  openExternalBtn.style.cssText = `
-    margin-left: 8px;
-    padding: 7px 12px;
-    background: #252525;
-    color: #fff;
-    border: 1px solid #555;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-  `;
+  openExternalBtn.textContent = "↗ Open externally";
+  openExternalBtn.title = "Open the current website in a regular browser tab";
 
   openExternalBtn.onclick = () => {
     const currentTab = tabs.find(t => t.id === activeTabId);
-    if (!currentTab || !currentTab.url) return;
+    if (!currentTab?.url) return;
 
     try {
       const target = new URL(currentTab.url);
@@ -253,7 +243,7 @@
     }
   };
 
-  document.body.appendChild(openExternalBtn);
+  $("#address-toolbar").appendChild(openExternalBtn);
   $("#urlbar-input").onkeydown = (e) => { if(e.key === "Enter") window.navigateExtern(e.target.value); };
   
   // LOGO MENU LOGIC
