@@ -96,63 +96,67 @@
     try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`; } catch { return ""; }
   }
 
-  async function navigate(tab, url) {
-    tab.loading = true;
-    tab.url = url;
+ 
+async function navigate(tab, url) {
+  tab.loading = true;
+  tab.url = url;
+  updateUI();
+
+  const speedDial = $("#speed-dial-view");
+
+  if (url === "about:speeddial") {
+    speedDial.classList.remove("hidden");
+    document.querySelectorAll(".web-frame").forEach(f => {
+      f.style.display = "none";
+    });
+    renderSpeedDial();
+    tab.loading = false;
     updateUI();
-    const speedDial = $("#speed-dial-view");
-    
-    if (url === "about:speeddial") {
-      speedDial.classList.remove("hidden");
-      document.querySelectorAll('.web-frame').forEach(f => f.style.display = 'none');
-      renderSpeedDial();
-      tab.loading = false;
-      updateUI();
-      return;
-    }
+    return;
+  }
 
-    speedDial.classList.add("hidden");
+  speedDial.classList.add("hidden");
+
+  if (url.startsWith("data:")) {
     let frame = $(`#frame-${tab.id}`);
-    if(!frame) {
-       frame = document.createElement("iframe");
-       frame.className = "web-frame";
-       frame.id = "frame-" + tab.id;
-       if(forceDark) frame.classList.add('forced-dark');
-       $("#web-content").appendChild(frame);
+
+    if (!frame) {
+      frame = document.createElement("iframe");
+      frame.className = "web-frame";
+      frame.id = "frame-" + tab.id;
+      $("#web-content").appendChild(frame);
     }
-    
+
     frame.style.display = "block";
-    frame.style.background = "#fff";
+    frame.src = url;
+    tab.loading = false;
+    updateUI();
+    return;
+  }
 
-    if (url.startsWith("data:")) { frame.src = url; tab.loading = false; updateUI(); return; }
-    
-        try {
-      const target = new URL(url);
+  try {
+    const target = new URL(url);
 
-      if (!["http:", "https:"].includes(target.protocol)) {
-        throw new Error("Only HTTP and HTTPS websites are supported.");
-      }
-
-      frame.removeAttribute("sandbox");
-      frame.removeAttribute("srcdoc");
-      frame.src = target.href;
-      tab.title = target.hostname;
-    } catch (e) {
-      frame.removeAttribute("srcdoc");
-      frame.srcdoc = `
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family:Arial,sans-serif;background:#111;color:#eee;text-align:center;padding:60px 20px">
-          <h2>Unable to open this address</h2>
-          <p>Check the address and try again.</p>
-        </body>
-        </html>`;
-      tab.title = "Navigation Error";
+    if (!["http:", "https:"].includes(target.protocol)) {
+      throw new Error("Only HTTP and HTTPS websites are supported.");
     }
+
+    tab.title = target.hostname;
+
+    // External navigation avoids websites blocking Aura's iframe.
+    window.open(target.href, "_blank", "noopener,noreferrer");
 
     tab.loading = false;
     updateUI();
+  } catch (error) {
+    tab.title = "Navigation Error";
+    tab.loading = false;
+    updateUI();
+    console.error("Unable to open website:", error);
+    alert("Unable to open this address. Check the URL and try again.");
   }
+}
+
 
   function renderSpeedDial() {
     const view = $("#speed-dial-view");
